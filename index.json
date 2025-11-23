@@ -1,0 +1,18 @@
+[
+  {
+    "name": "动漫屋 (Suwa)",
+    "lang": "zh",
+    "id": "409842082746735040",
+    "baseUrl": "https://www.dm5.cn",
+    "versionId": 1,
+    "pkg": "eu.kanade.tachiyomi.extension.zh.dm5suwa"
+  },
+  {
+    "name": "漫画人 (Suwa)",
+    "lang": "zh",
+    "id": "8097720503227101215",
+    "baseUrl": "http://mangaapi.manhuaren.com",
+    "versionId": 1,
+    "pkg": "eu.kanade.tachiyomi.extension.zh.manhuarensuwa"
+  }
+]
