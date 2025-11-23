@@ -26,7 +26,7 @@ import java.util.Locale
 class Dm5 : ParsedHttpSource(), ConfigurableSource {
     override val lang = "zh"
     override val supportsLatest = true
-    override val name = "动漫屋"
+    override val name = "动漫屋 (Suwa)"
     override val client: OkHttpClient = network.cloudflareClient.newBuilder()
         .addInterceptor(CommentsInterceptor)
         .build()

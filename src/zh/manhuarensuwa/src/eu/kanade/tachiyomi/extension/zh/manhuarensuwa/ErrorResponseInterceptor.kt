@@ -1,8 +1,8 @@
-package eu.kanade.tachiyomi.extension.zh.manhuaren
+package eu.kanade.tachiyomi.extension.zh.manhuarensuwa
 
 import android.content.SharedPreferences
-import eu.kanade.tachiyomi.extension.zh.manhuaren.Manhuaren.Companion.TOKEN_PREF
-import eu.kanade.tachiyomi.extension.zh.manhuaren.Manhuaren.Companion.USER_ID_PREF
+import eu.kanade.tachiyomi.extension.zh.manhuarensuwa.Manhuaren.Companion.TOKEN_PREF
+import eu.kanade.tachiyomi.extension.zh.manhuarensuwa.Manhuaren.Companion.USER_ID_PREF
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import okhttp3.Interceptor

@@ -27,8 +27,6 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.Buffer
-import okio.ByteString.Companion.decodeBase64
-import okio.ByteString.Companion.toByteString
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -36,6 +34,7 @@ import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.spec.X509EncodedKeySpec
 import java.text.SimpleDateFormat
+import java.util.Base64
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
@@ -47,7 +46,7 @@ import kotlin.random.nextUBytes
 class Manhuaren : HttpSource(), ConfigurableSource {
     override val lang = "zh"
     override val supportsLatest = true
-    override val name = "漫画人"
+    override val name = "漫画人 (Suwa)"
     override val baseUrl = "http://mangaapi.manhuaren.com"
 
     private val pageSize = 20
@@ -152,13 +151,12 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     }
 
     private fun encrypt(message: String): String {
-        val decodedKey = encodedPublicKey.decodeBase64()?.toByteArray() ?: throw Exception("Invalid Key")
-        val x509EncodedKeySpec = X509EncodedKeySpec(decodedKey)
+        val x509EncodedKeySpec = X509EncodedKeySpec(Base64.getDecoder().decode(encodedPublicKey))
         val publicKey = KeyFactory.getInstance("RSA").generatePublic(x509EncodedKeySpec)
         val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
-        return cipher.doFinal(message.toByteArray()).toByteString().base64()
+        return Base64.getEncoder().encodeToString(cipher.doFinal(message.toByteArray()))
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
