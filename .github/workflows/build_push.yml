@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
 
-# ✅ 新增：確保 Actions 有權限寫入 repo 分支
+# ✅ 確保 Actions 有權限寫入 repo 分支
 permissions:
   contents: write
 
@@ -80,7 +80,13 @@ jobs:
       - name: Create Repo Index
         run: |
           cd repo
-          # ✅ 修正：透過 GitHub API 自動抓取最新的 Inspector 下載點
+          
+          # ✅ 重點修正：把深層的 APK 全部移動到最外層 (Flatten)
+          # 如果不加這行，Inspector 會因為找不到檔案而產出空白 json
+          echo "Flattening APK directory..."
+          find apk -type f -name "*.apk" -exec mv {} apk/ \;
+          
+          # Download the official inspector tool dynamically
           INSPECTOR_URL=$(curl -s "https://api.github.com/repos/keiyoushi/extensions-inspector/releases/latest" | jq -r '.assets[] | select(.name | endswith(".jar")) | .browser_download_url')
           
           echo "Downloading Inspector from: $INSPECTOR_URL"
