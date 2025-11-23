@@ -1,9 +1,10 @@
 package eu.kanade.tachiyomi.extension.zh.dm5
 
 import android.content.SharedPreferences
-import android.util.Log
-import android.webkit.CookieManager
-import android.widget.Toast
+// 移除 Android UI 和 Webkit 依賴，避免 Suwayomi 崩潰
+// import android.util.Log
+// import android.webkit.CookieManager
+// import android.widget.Toast
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
@@ -37,9 +38,11 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
     private val preferences: SharedPreferences = getPreferences()
     override val baseUrl = preferences.getString(MIRROR_PREF, MIRROR_ENTRIES[0])!!
 
-    // Some mangas are blocked without this
-    override fun headersBuilder() = super.headersBuilder().set("Accept-Language", "zh-TW")
+    // ✅ 修改重點：保留原本的 User-Agent，並強制加入 isAdult=1 Cookie
+    override fun headersBuilder() = super.headersBuilder()
+        .set("Accept-Language", "zh-TW")
         .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")
+        .add("Cookie", "isAdult=1")
 
     override fun popularMangaRequest(page: Int) = GET("$baseUrl/manhua-list-p$page/", headers)
     override fun popularMangaNextPageSelector(): String = "div.page-pagination a:contains(>)"
@@ -88,6 +91,7 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
         val document = response.asJsoup()
         // May need to click button on website to read
         val container = document.selectFirst("div#chapterlistload")
+            // 提示訊息保留，但理論上因為我們加了 cookie，這裡不應該再報錯了
             ?: throw Exception("请到 WebView 确认；切换网络环境后可尝试扩展设置里面的“（动漫屋专用）清除 Cookie”")
         val li = container.select("li > a").map {
             SChapter.create().apply {
@@ -216,40 +220,9 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
         screen.addPreference(chapterCommentsPreference)
         screen.addPreference(sortChapterPreference)
 
-        SwitchPreferenceCompat(screen.context).run {
-            title = "（动漫屋专用）清除 Cookie"
-            summary = "切换网络环境后可尝试清除（app 自带的清除 Cookie 无效）"
-            setOnPreferenceChangeListener { _, _ ->
-                val message = try {
-                    val manager = CookieManager.getInstance()
-                    var before = 0
-                    var after = 0
-                    for (mirror in MIRROR_ENTRIES) {
-                        val cookies = manager.getCookie(mirror) ?: continue
-                        val cookieList = cookies.split("; ")
-                        before += cookieList.size
-                        val url = mirror.toHttpUrl()
-                        val domain = url.host
-                        val topDomain = url.topPrivateDomain()
-                        for (cookie in cookieList) {
-                            val name = cookie.substringBefore('=')
-                            manager.setCookie(mirror, "$name=; Max-Age=-1; Path=/")
-                            manager.setCookie(mirror, "$name=; Max-Age=-1; Domain=$domain; Path=/")
-                            manager.setCookie(mirror, "$name=; Max-Age=-1; Domain=$topDomain; Path=/")
-                        }
-                        val cookiesAfter = manager.getCookie(mirror) ?: continue
-                        after += cookiesAfter.split("; ").size
-                    }
-                    "一共 $before 条 Cookie，清除了 ${before - after} 条"
-                } catch (e: Exception) {
-                    Log.e("Dm5", "failed to clear cookies", e)
-                    "清除失败：$e"
-                }
-                Toast.makeText(screen.context, message, Toast.LENGTH_LONG).show()
-                false
-            }
-            screen.addPreference(this)
-        }
+        // ❌ 移除了「清除 Cookie」的選項
+        // 因為它使用了 android.webkit.CookieManager 和 Toast，會導致 Suwayomi 崩潰。
+        // 而且既然我們已經硬改了 Cookie，這個功能也不需要了。
     }
 
     companion object {

@@ -1,8 +1,9 @@
 /**
  * Add or remove modules to load as needed for local development here.
  */
-loadAllIndividualExtensions()
-// loadIndividualExtension("all", "mangadex")
+// Only load zh/manhuaren and zh/dm5 extensions
+include(":src:zh:manhuaren")
+include(":src:zh:dm5")
 
 /**
  * ===================================== COMMON CONFIGURATION ======================================

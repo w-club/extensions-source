@@ -1,9 +1,8 @@
 package eu.kanade.tachiyomi.extension.zh.manhuaren
 
 import android.content.SharedPreferences
-import android.os.Build
-import android.text.format.DateFormat
-import android.util.Base64
+// 移除 android.util.Base64，改用 Java 標準庫
+// import android.util.Base64
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.network.GET
@@ -40,6 +39,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.Base64 // ✅ 新增：使用 Java 標準 Base64
 import java.util.concurrent.TimeUnit.MINUTES
 import javax.crypto.Cipher
 import kotlin.random.Random
@@ -108,10 +108,6 @@ class Manhuaren : HttpSource(), ConfigurableSource {
         return addLuhnCheckDigit(randomNumber(14))
     }
 
-    // private fun generateSimSerialNumber(): String {
-    //     return addLuhnCheckDigit("891253${randomNumber(12)}")
-    // }
-
     @Serializable
     data class TokenResult(
         val parameter: String,
@@ -157,12 +153,14 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     }
 
     private fun encrypt(message: String): String {
-        val x509EncodedKeySpec = X509EncodedKeySpec(Base64.decode(encodedPublicKey, Base64.DEFAULT))
+        // ✅ 修改：使用 Java 標準 Base64 Decoder
+        val x509EncodedKeySpec = X509EncodedKeySpec(Base64.getDecoder().decode(encodedPublicKey))
         val publicKey = KeyFactory.getInstance("RSA").generatePublic(x509EncodedKeySpec)
         val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
-        return Base64.encodeToString(cipher.doFinal(message.toByteArray()), Base64.NO_WRAP)
+        // ✅ 修改：使用 Java 標準 Base64 Encoder (無斷行模式)
+        return Base64.getEncoder().encodeToString(cipher.doFinal(message.toByteArray()))
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
@@ -171,9 +169,6 @@ class Manhuaren : HttpSource(), ConfigurableSource {
             .addPathSegments("v1/user/createAnonyUser2")
             .build()
 
-        // val simSerialNumber = generateSimSerialNumber()
-        // val mac = Random.nextUBytes(6)
-        //     .joinToString(":") { it.toString(16).padStart(2, '0') }
         val androidId = Random.nextUBytes(8)
             .joinToString("") { it.toString(16).padStart(2, '0') }
             .replaceFirst("^0+".toRegex(), "")
@@ -186,24 +181,12 @@ class Manhuaren : HttpSource(), ConfigurableSource {
                     put("keyType", "0")
                 },
             )
-            // add(
-            //     HashMap<String, Any?>().apply {
-            //         put("key", encrypt("mac: $mac"))
-            //         put("keyType", "1")
-            //     },
-            // )
             add(
                 HashMap<String, Any?>().apply {
-                    put("key", encrypt(androidId)) // https://developer.android.com/reference/android/provider/Settings.Secure#ANDROID_ID
+                    put("key", encrypt(androidId))
                     put("keyType", "2")
                 },
             )
-            // add(
-            //     HashMap<String, Any?>().apply {
-            //         put("key", encrypt(simSerialNumber)) // https://developer.android.com/reference/android/telephony/TelephonyManager#getSimSerialNumber()
-            //         put("keyType", "3")
-            //     },
-            // )
             add(
                 HashMap<String, Any?>().apply {
                     put("key", encrypt(UUID.randomUUID().toString()))
@@ -253,7 +236,8 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     }
 
     private fun myRequest(url: HttpUrl, method: String, body: RequestBody?): Request {
-        val now = DateFormat.format("yyyy-MM-dd+HH:mm:ss", Date()).toString()
+        // ✅ 這裡你已經改好了 (SimpleDateFormat)，保留！
+        val now = SimpleDateFormat("yyyy-MM-dd+HH:mm:ss", Locale.US).format(Date())
         val userId = preferences.getString(USER_ID_PREF, "-1")!!
         val newUrl = url.newBuilder()
             .setQueryParameter("gsm", "md5")
@@ -318,40 +302,41 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     override fun headersBuilder(): Headers.Builder {
         val yqciMap = HashMap<String, Any?>().apply {
             put("at", -1)
-            put("av", "7.0.1") // app version
-            put("ciso", "us") // https://developer.android.com/reference/android/telephony/TelephonyManager#getSimCountryIso()
-            put("cl", "dm5") // Umeng channel
-            put("cy", "US") // country
+            put("av", "7.0.1") 
+            put("ciso", "us") 
+            put("cl", "dm5") 
+            put("cy", "US") 
             put("di", imei)
-            put("dm", Build.MODEL)
-            put("fcl", "dm5") // Umeng channel config
-            put("ft", "mhr") // from type
-            put("fut", lastUsedTime) // first used time
+            // ✅ 這裡你已經改好了 (Pixel 6)，保留！
+            put("dm", "Pixel 6") 
+            put("fcl", "dm5") 
+            put("ft", "mhr") 
+            put("fut", lastUsedTime) 
             put("installation", "dm5")
-            put("le", "zh") // language
-            put("ln", "") // location
-            put("lut", lastUsedTime) // last used time
+            put("le", "zh") 
+            put("ln", "") 
+            put("lut", lastUsedTime) 
             put("nt", 3)
-            put("os", 1) // OS (int)
-            put("ov", "33_13") // "{Build.VERSION.SDK_INT}_{Build.VERSION.RELEASE}"
-            put("pt", "com.mhr.mangamini") // package name
-            put("rn", "1080x1920") // screen "{width}x{height}"
+            put("os", 1) 
+            put("ov", "33_13") 
+            put("pt", "com.mhr.mangamini") 
+            put("rn", "1080x1920") 
             put("st", 0)
         }
         val yqppMap = HashMap<String, Any?>().apply {
-            put("ciso", "us") // https://developer.android.com/reference/android/telephony/TelephonyManager#getSimCountryIso()
-            put("laut", "0") // is allow location ("0" or "1")
-            put("lot", "") // longitude
-            put("lat", "") // latitude
-            put("cut", "GMT+8") // time zone
-            put("fcc", "") // first country code
-            put("flg", "") // first language
-            put("lcc", "") // country code
-            put("lcn", "") // country name
-            put("flcc", "") // first location country code
-            put("flot", "") // first location longitude
-            put("flat", "") // first location latitude
-            put("ac", "") // area code
+            put("ciso", "us") 
+            put("laut", "0") 
+            put("lot", "") 
+            put("lat", "") 
+            put("cut", "GMT+8") 
+            put("fcc", "") 
+            put("flg", "") 
+            put("lcc", "") 
+            put("lcn", "") 
+            put("flcc", "") 
+            put("flot", "") 
+            put("flat", "") 
+            put("ac", "") 
         }
 
         val userId = preferences.getString(USER_ID_PREF, "-1")!!
@@ -361,7 +346,8 @@ class Manhuaren : HttpSource(), ConfigurableSource {
             add("yq_is_anonymous", "1")
             add("x-request-id", UUID.randomUUID().toString())
             add("X-Yq-Yqpp", JSONObject(yqppMap).toString())
-            add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 13; ${Build.MODEL} Build/${Build.ID})")
+            // ✅ 這裡你已經改好了 (Hardcoded User-Agent)，保留！
+            add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 13; Pixel 6 Build/TQ3A.230901.001)")
         }
     }
 
