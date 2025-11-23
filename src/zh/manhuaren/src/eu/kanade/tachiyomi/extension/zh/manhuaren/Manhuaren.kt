@@ -1,8 +1,6 @@
 package eu.kanade.tachiyomi.extension.zh.manhuaren
 
 import android.content.SharedPreferences
-// 移除 android.util.Base64，改用 Java 標準庫
-// import android.util.Base64
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.network.GET
@@ -29,6 +27,8 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.Buffer
+import okio.ByteString.Companion.decodeBase64
+import okio.ByteString.Companion.toByteString
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -39,7 +39,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-import java.util.Base64 // ✅ 新增：使用 Java 標準 Base64
 import java.util.concurrent.TimeUnit.MINUTES
 import javax.crypto.Cipher
 import kotlin.random.Random
@@ -153,14 +152,15 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     }
 
     private fun encrypt(message: String): String {
-        // ✅ 修改：使用 Java 標準 Base64 Decoder
-        val x509EncodedKeySpec = X509EncodedKeySpec(Base64.getDecoder().decode(encodedPublicKey))
+        // ✅ 使用 Okio 來解碼 Base64 (避開 android.util 和 java.util 的相容性問題)
+        val decodedKey = encodedPublicKey.decodeBase64()?.toByteArray() ?: throw Exception("Invalid Key")
+        val x509EncodedKeySpec = X509EncodedKeySpec(decodedKey)
         val publicKey = KeyFactory.getInstance("RSA").generatePublic(x509EncodedKeySpec)
         val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
-        // ✅ 修改：使用 Java 標準 Base64 Encoder (無斷行模式)
-        return Base64.getEncoder().encodeToString(cipher.doFinal(message.toByteArray()))
+        // ✅ 使用 Okio 來編碼結果
+        return cipher.doFinal(message.toByteArray()).toByteString().base64()
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
@@ -236,7 +236,6 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     }
 
     private fun myRequest(url: HttpUrl, method: String, body: RequestBody?): Request {
-        // ✅ 這裡你已經改好了 (SimpleDateFormat)，保留！
         val now = SimpleDateFormat("yyyy-MM-dd+HH:mm:ss", Locale.US).format(Date())
         val userId = preferences.getString(USER_ID_PREF, "-1")!!
         val newUrl = url.newBuilder()
@@ -302,41 +301,13 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     override fun headersBuilder(): Headers.Builder {
         val yqciMap = HashMap<String, Any?>().apply {
             put("at", -1)
-            put("av", "7.0.1") 
-            put("ciso", "us") 
-            put("cl", "dm5") 
-            put("cy", "US") 
-            put("di", imei)
-            // ✅ 這裡你已經改好了 (Pixel 6)，保留！
-            put("dm", "Pixel 6") 
-            put("fcl", "dm5") 
-            put("ft", "mhr") 
-            put("fut", lastUsedTime) 
-            put("installation", "dm5")
-            put("le", "zh") 
-            put("ln", "") 
-            put("lut", lastUsedTime) 
-            put("nt", 3)
-            put("os", 1) 
-            put("ov", "33_13") 
-            put("pt", "com.mhr.mangamini") 
-            put("rn", "1080x1920") 
-            put("st", 0)
+            put("av", "7.0.1") put("ciso", "us") put("cl", "dm5") put("cy", "US") put("di", imei)
+            put("dm", "Pixel 6") put("fcl", "dm5") put("ft", "mhr") put("fut", lastUsedTime) put("installation", "dm5")
+            put("le", "zh") put("ln", "") put("lut", lastUsedTime) put("nt", 3)
+            put("os", 1) put("ov", "33_13") put("pt", "com.mhr.mangamini") put("rn", "1080x1920") put("st", 0)
         }
         val yqppMap = HashMap<String, Any?>().apply {
-            put("ciso", "us") 
-            put("laut", "0") 
-            put("lot", "") 
-            put("lat", "") 
-            put("cut", "GMT+8") 
-            put("fcc", "") 
-            put("flg", "") 
-            put("lcc", "") 
-            put("lcn", "") 
-            put("flcc", "") 
-            put("flot", "") 
-            put("flat", "") 
-            put("ac", "") 
+            put("ciso", "us") put("laut", "0") put("lot", "") put("lat", "") put("cut", "GMT+8") put("fcc", "") put("flg", "") put("lcc", "") put("lcn", "") put("flcc", "") put("flot", "") put("flat", "") put("ac", "")
         }
 
         val userId = preferences.getString(USER_ID_PREF, "-1")!!
@@ -346,7 +317,6 @@ class Manhuaren : HttpSource(), ConfigurableSource {
             add("yq_is_anonymous", "1")
             add("x-request-id", UUID.randomUUID().toString())
             add("X-Yq-Yqpp", JSONObject(yqppMap).toString())
-            // ✅ 這裡你已經改好了 (Hardcoded User-Agent)，保留！
             add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 13; Pixel 6 Build/TQ3A.230901.001)")
         }
     }
