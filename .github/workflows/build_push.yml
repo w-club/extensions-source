@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+# ✅ 新增：確保 Actions 有權限寫入 repo 分支
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
@@ -76,8 +80,11 @@ jobs:
       - name: Create Repo Index
         run: |
           cd repo
-          # Download the official inspector tool
-          curl -L "https://github.com/keiyoushi/extensions-inspector/releases/latest/download/Inspector.jar" -o Inspector.jar
+          # ✅ 修正：透過 GitHub API 自動抓取最新的 Inspector 下載點
+          INSPECTOR_URL=$(curl -s "https://api.github.com/repos/keiyoushi/extensions-inspector/releases/latest" | jq -r '.assets[] | select(.name | endswith(".jar")) | .browser_download_url')
+          
+          echo "Downloading Inspector from: $INSPECTOR_URL"
+          curl -L "$INSPECTOR_URL" -o Inspector.jar
           
           # Generate the index.json
           java -jar Inspector.jar "apk" "index.json" "tmp"
