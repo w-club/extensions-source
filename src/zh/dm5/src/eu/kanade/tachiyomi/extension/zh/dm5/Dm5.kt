@@ -1,10 +1,6 @@
 package eu.kanade.tachiyomi.extension.zh.dm5
 
 import android.content.SharedPreferences
-// 移除 Android UI 和 Webkit 依賴，避免 Suwayomi 崩潰
-// import android.util.Log
-// import android.webkit.CookieManager
-// import android.widget.Toast
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
@@ -38,7 +34,6 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
     private val preferences: SharedPreferences = getPreferences()
     override val baseUrl = preferences.getString(MIRROR_PREF, MIRROR_ENTRIES[0])!!
 
-    // ✅ 修改重點：保留原本的 User-Agent，並強制加入 isAdult=1 Cookie
     override fun headersBuilder() = super.headersBuilder()
         .set("Accept-Language", "zh-TW")
         .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")
@@ -89,9 +84,7 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val document = response.asJsoup()
-        // May need to click button on website to read
         val container = document.selectFirst("div#chapterlistload")
-            // 提示訊息保留，但理論上因為我們加了 cookie，這裡不應該再報錯了
             ?: throw Exception("请到 WebView 确认；切换网络环境后可尝试扩展设置里面的“（动漫屋专用）清除 Cookie”")
         val li = container.select("li > a").map {
             SChapter.create().apply {
@@ -109,12 +102,10 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
             }
         }
 
-        // Sort chapter by url (related to upload time)
         if (preferences.getBoolean(SORT_CHAPTER_PREF, false)) {
             return li.sortedByDescending { it.url.drop(2).dropLast(1).toInt() }
         }
 
-        // Sometimes list is in ascending order, probably unread paid manga
         return if (document.selectFirst("div.detail-list-title a.order")!!.text() == "正序") {
             li.reversed()
         } else {
@@ -219,10 +210,6 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
         screen.addPreference(mirrorPreference)
         screen.addPreference(chapterCommentsPreference)
         screen.addPreference(sortChapterPreference)
-
-        // ❌ 移除了「清除 Cookie」的選項
-        // 因為它使用了 android.webkit.CookieManager 和 Toast，會導致 Suwayomi 崩潰。
-        // 而且既然我們已經硬改了 Cookie，這個功能也不需要了。
     }
 
     companion object {

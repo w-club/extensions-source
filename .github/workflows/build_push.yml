@@ -4,104 +4,47 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '**'
-      - '!**.md'
-      - '!.github/**'
-      - '.github/scripts/**'
-      - '.github/workflows/build_push.yml'
   workflow_dispatch:
-
-permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
-env:
-  CI_CHUNK_SIZE: 65
-  IS_PR_CHECK: false
-
 jobs:
-  prepare:
-    name: Prepare job
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      matrix: ${{ steps.generate-matrices.outputs.matrix }}
-      delete: ${{ steps.generate-matrices.outputs.delete }}
-    steps:
-      - name: Checkout main branch
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up Java
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
-        with:
-          java-version: 17
-          distribution: temurin
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # v5.0.0
-        with:
-          cache-read-only: true
-
-      - name: Get last successful CI commit
-        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
-        with:
-          fallback-sha: 4b825dc642cb6eb9a060e54bf8d69288fbee4904 # empty tree
-
-      - id: generate-matrices
-        name: Create output matrices
-        run: |
-          python ./.github/scripts/generate-build-matrices.py "$NX_BASE" Release
-
   build:
-    name: Build extensions (${{ matrix.chunk.number }})
-    needs: prepare
+    name: Build extensions
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: ${{ toJson(fromJson(needs.prepare.outputs.matrix).chunk) != '[]' }}
-    strategy:
-      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
-      - name: Checkout main branch
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          persist-credentials: false
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
-          java-version: 17
-          distribution: temurin
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # v5.0.0
-        with:
-          cache-read-only: ${{ matrix.chunk.number > 1 }}
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Prepare signing key
-        run: |
-          echo ${{ secrets.SIGNING_KEY }} | base64 -d > signingkey.jks
-
-      - name: Build extensions (${{ matrix.chunk.number }})
+      - name: Decode Keystore
         env:
-          MODULES: ${{ join(matrix.chunk.modules, ' ') }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          echo "$SIGNING_KEY" | base64 -d > signingkey.jks
+
+      - name: Build extensions
+        env:
           ALIAS: ${{ secrets.ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          ./gradlew $MODULES
+        run: ./gradlew assembleRelease
 
-      - name: Upload APKs (${{ matrix.chunk.number }})
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        if: "github.repository == 'keiyoushi/extensions-source'"
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
         with:
-          name: "individual-apks-${{ matrix.chunk.number }}"
-          path: "**/*.apk"
+          name: "extensions-apks"
+          path: "**/*-release.apk"
           retention-days: 1
 
       - name: Clean up CI files
@@ -109,51 +52,47 @@ jobs:
 
   publish:
     name: Publish extension repo
-    needs: [prepare, build]
-    if: "github.repository == 'keiyoushi/extensions-source'"
+    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Download APK artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          path: ~/apk-artifacts
-
-      - name: Set up JDK
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
-        with:
-          java-version: 17
-          distribution: temurin
-
-      - name: Checkout main branch
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           ref: main
           path: main
-          persist-credentials: false
 
-      - name: Create repo artifacts
-        run: |
-          cd main
-          python ./.github/scripts/move-built-apks.py
-          INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/keiyoushi/extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
-          curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
-          java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
-          python ./.github/scripts/create-repo.py
-
-      - name: Checkout repo branch
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
-          repository: keiyoushi/extensions
-          token: ${{ secrets.BOT_PAT }}
-          ref: repo
-          path: repo
-          persist-credentials: true
+          java-version: '17'
+          distribution: 'temurin'
 
-      - name: Merge and deploy repo
-        env:
-          DELETE: ${{ needs.prepare.outputs.delete }}
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extensions-apks
+          path: repo/apk
+
+      - name: Create Repo Index
         run: |
           cd repo
-          python ../main/.github/scripts/merge-repo.py "$DELETE"
-          ../main/.github/scripts/commit-repo.sh
+          # Download the official inspector tool
+          curl -L "https://github.com/keiyoushi/extensions-inspector/releases/latest/download/Inspector.jar" -o Inspector.jar
+          
+          # Generate the index.json
+          java -jar Inspector.jar "apk" "index.json" "tmp"
+          
+          # Clean up
+          rm Inspector.jar
+          rm -rf tmp
+
+      - name: Deploy to Repo Branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./repo
+          publish_branch: repo
+          user_name: 'GitHub Actions'
+          user_email: 'actions@github.com'
+          commit_message: 'Update extension repo'
+          force_orphan: true

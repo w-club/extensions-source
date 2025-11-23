@@ -152,14 +152,12 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     }
 
     private fun encrypt(message: String): String {
-        // ✅ 使用 Okio 來解碼 Base64 (避開 android.util 和 java.util 的相容性問題)
         val decodedKey = encodedPublicKey.decodeBase64()?.toByteArray() ?: throw Exception("Invalid Key")
         val x509EncodedKeySpec = X509EncodedKeySpec(decodedKey)
         val publicKey = KeyFactory.getInstance("RSA").generatePublic(x509EncodedKeySpec)
         val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
-        // ✅ 使用 Okio 來編碼結果
         return cipher.doFinal(message.toByteArray()).toByteString().base64()
     }
 
@@ -245,34 +243,34 @@ class Manhuaren : HttpSource(), ConfigurableSource {
             .setQueryParameter("gat", "")
             .setQueryParameter("gui", userId)
             .setQueryParameter("gts", now)
-            .setQueryParameter("gut", "0") // user type
+            .setQueryParameter("gut", "0")
             .setQueryParameter("gem", "1")
             .setQueryParameter("gaui", userId)
-            .setQueryParameter("gln", "") // location
-            .setQueryParameter("gcy", "US") // country
-            .setQueryParameter("gle", "zh") // language
-            .setQueryParameter("gcl", "dm5") // Umeng channel
-            .setQueryParameter("gos", "1") // OS (int)
-            .setQueryParameter("gov", "33_13") // "{Build.VERSION.SDK_INT}_{Build.VERSION.RELEASE}"
-            .setQueryParameter("gav", "7.0.1") // app version
+            .setQueryParameter("gln", "")
+            .setQueryParameter("gcy", "US")
+            .setQueryParameter("gle", "zh")
+            .setQueryParameter("gcl", "dm5")
+            .setQueryParameter("gos", "1")
+            .setQueryParameter("gov", "33_13")
+            .setQueryParameter("gav", "7.0.1")
             .setQueryParameter("gdi", imei)
-            .setQueryParameter("gfcl", "dm5") // Umeng channel config
-            .setQueryParameter("gfut", lastUsedTime) // first used time
-            .setQueryParameter("glut", lastUsedTime) // last used time
-            .setQueryParameter("gpt", "com.mhr.mangamini") // package name
-            .setQueryParameter("gciso", "us") // https://developer.android.com/reference/android/telephony/TelephonyManager#getSimCountryIso()
-            .setQueryParameter("glot", "") // longitude
-            .setQueryParameter("glat", "") // latitude
-            .setQueryParameter("gflot", "") // first location longitude
-            .setQueryParameter("gflat", "") // first location latitude
-            .setQueryParameter("glbsaut", "0") // is allow location (0 or 1)
-            .setQueryParameter("gac", "") // area code
-            .setQueryParameter("gcut", "GMT+8") // time zone
-            .setQueryParameter("gfcc", "") // first country code
-            .setQueryParameter("gflg", "") // first language
-            .setQueryParameter("glcn", "") // country name
-            .setQueryParameter("glcc", "") // country code
-            .setQueryParameter("gflcc", "") // first location country code
+            .setQueryParameter("gfcl", "dm5")
+            .setQueryParameter("gfut", lastUsedTime)
+            .setQueryParameter("glut", lastUsedTime)
+            .setQueryParameter("gpt", "com.mhr.mangamini")
+            .setQueryParameter("gciso", "us")
+            .setQueryParameter("glot", "")
+            .setQueryParameter("glat", "")
+            .setQueryParameter("gflot", "")
+            .setQueryParameter("gflat", "")
+            .setQueryParameter("glbsaut", "0")
+            .setQueryParameter("gac", "")
+            .setQueryParameter("gcut", "GMT+8")
+            .setQueryParameter("gfcc", "")
+            .setQueryParameter("gflg", "")
+            .setQueryParameter("glcn", "")
+            .setQueryParameter("glcc", "")
+            .setQueryParameter("gflcc", "")
             .build()
 
         return addGsnHash(
@@ -301,13 +299,40 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     override fun headersBuilder(): Headers.Builder {
         val yqciMap = HashMap<String, Any?>().apply {
             put("at", -1)
-            put("av", "7.0.1") put("ciso", "us") put("cl", "dm5") put("cy", "US") put("di", imei)
-            put("dm", "Pixel 6") put("fcl", "dm5") put("ft", "mhr") put("fut", lastUsedTime) put("installation", "dm5")
-            put("le", "zh") put("ln", "") put("lut", lastUsedTime) put("nt", 3)
-            put("os", 1) put("ov", "33_13") put("pt", "com.mhr.mangamini") put("rn", "1080x1920") put("st", 0)
+            put("av", "7.0.1")
+            put("ciso", "us")
+            put("cl", "dm5")
+            put("cy", "US")
+            put("di", imei)
+            put("dm", "Pixel 6")
+            put("fcl", "dm5")
+            put("ft", "mhr")
+            put("fut", lastUsedTime)
+            put("installation", "dm5")
+            put("le", "zh")
+            put("ln", "")
+            put("lut", lastUsedTime)
+            put("nt", 3)
+            put("os", 1)
+            put("ov", "33_13")
+            put("pt", "com.mhr.mangamini")
+            put("rn", "1080x1920")
+            put("st", 0)
         }
         val yqppMap = HashMap<String, Any?>().apply {
-            put("ciso", "us") put("laut", "0") put("lot", "") put("lat", "") put("cut", "GMT+8") put("fcc", "") put("flg", "") put("lcc", "") put("lcn", "") put("flcc", "") put("flot", "") put("flat", "") put("ac", "")
+            put("ciso", "us")
+            put("laut", "0")
+            put("lot", "")
+            put("lat", "")
+            put("cut", "GMT+8")
+            put("fcc", "")
+            put("flg", "")
+            put("lcc", "")
+            put("lcn", "")
+            put("flcc", "")
+            put("flot", "")
+            put("flat", "")
+            put("ac", "")
         }
 
         val userId = preferences.getString(USER_ID_PREF, "-1")!!
