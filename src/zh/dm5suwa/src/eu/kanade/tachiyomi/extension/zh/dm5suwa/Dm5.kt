@@ -34,12 +34,12 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
     private val preferences: SharedPreferences = getPreferences()
     override val baseUrl = preferences.getString(MIRROR_PREF, MIRROR_ENTRIES[0])!!
 
-    // ✅ 修改重點：
-    // 1. User-Agent 改成 Pixel 6 (Android)，避免被當成電腦爬蟲
-    // 2. Cookie 加入了 MACHINEKEY，模擬真實裝置
+    // ✅ 終極修正：
+    // 1. 使用電腦版 User-Agent (Windows Chrome)
+    // 2. 注入完整 Cookie (包含 isAdult 和 MachineKey)
     override fun headersBuilder() = super.headersBuilder()
         .set("Accept-Language", "zh-TW")
-        .set("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 13; Pixel 6 Build/TQ3A.230901.001)")
+        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
         .add("Cookie", "isAdult=1; DM5_MACHINEKEY=8aac7680-db45-4201-b2ba-4784e36604b2; ILUSER_MACHINEKEY=430baddd-5757-4c44-825a-c2a8b2598fe9")
 
     override fun popularMangaRequest(page: Int) = GET("$baseUrl/manhua-list-p$page/", headers)
