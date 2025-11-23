@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.extension.zh.manhuaren
+package eu.kanade.tachiyomi.extension.zh.manhuarensuwasuwa
 
 import android.content.SharedPreferences
 import androidx.preference.EditTextPreference
@@ -47,7 +47,7 @@ import kotlin.random.nextUBytes
 class Manhuaren : HttpSource(), ConfigurableSource {
     override val lang = "zh"
     override val supportsLatest = true
-    override val name = "漫画人"
+    override val name = "漫画�?
     override val baseUrl = "http://mangaapi.manhuaren.com"
 
     private val pageSize = 20
@@ -508,7 +508,7 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     override fun chapterListRequest(manga: SManga) = mangaDetailsRequest(manga)
 
     private fun getChapterName(type: String, name: String, title: String): String {
-        return (if (type == "mangaEpisode") "[番外] " else "") + name + (if (title == "") "" else ": $title")
+        return (if (type == "mangaEpisode") "[?��?] " else "") + name + (if (title == "") "" else ": $title")
     }
 
     private fun chaptersFromJSONArray(type: String, arr: JSONArray): List<SChapter> {
@@ -518,7 +518,7 @@ class Manhuaren : HttpSource(), ConfigurableSource {
             ret.add(
                 SChapter.create().apply {
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    name = if (obj.getInt("isMustPay") == 1) { "(锁) " } else { "" } + getChapterName(type, obj.getString("sectionName"), obj.getString("sectionTitle"))
+                    name = if (obj.getInt("isMustPay") == 1) { "(?? " } else { "" } + getChapterName(type, obj.getString("sectionName"), obj.getString("sectionTitle"))
                     date_upload = dateFormat.parse(obj.getString("releaseTime"))?.time ?: 0L
                     chapter_number = obj.getInt("sectionSort").toFloat()
                     url = "/v1/manga/getRead?mangaSectionId=${obj.getInt("sectionId")}"
@@ -574,54 +574,54 @@ class Manhuaren : HttpSource(), ConfigurableSource {
 
     override fun getFilterList() = FilterList(
         SortFilter(
-            "状态",
+            "?��?,
             arrayOf(
-                Pair("热门", "0"),
-                Pair("更新", "1"),
-                Pair("新作", "2"),
-                Pair("完结", "3"),
+                Pair("?�门", "0"),
+                Pair("?�新", "1"),
+                Pair("?��?", "2"),
+                Pair("完�?", "3"),
             ),
         ),
         CategoryFilter(
-            "分类",
+            "?�类",
             arrayOf(
-                Category("全部", "0", "0"),
-                Category("热血", "0", "31"),
-                Category("恋爱", "0", "26"),
-                Category("校园", "0", "1"),
-                Category("百合", "0", "3"),
-                Category("耽美", "0", "27"),
-                Category("伪娘", "0", "5"),
-                Category("冒险", "0", "2"),
-                Category("职场", "0", "6"),
-                Category("后宫", "0", "8"),
-                Category("治愈", "0", "9"),
+                Category("?�部", "0", "0"),
+                Category("?��?", "0", "31"),
+                Category("?�爱", "0", "26"),
+                Category("?�园", "0", "1"),
+                Category("?��?", "0", "3"),
+                Category("?��?", "0", "27"),
+                Category("伪�?", "0", "5"),
+                Category("?�险", "0", "2"),
+                Category("?�场", "0", "6"),
+                Category("?�宫", "0", "8"),
+                Category("治�?", "0", "9"),
                 Category("科幻", "0", "25"),
-                Category("励志", "0", "10"),
-                Category("生活", "0", "11"),
-                Category("战争", "0", "12"),
-                Category("悬疑", "0", "17"),
-                Category("推理", "0", "33"),
-                Category("搞笑", "0", "37"),
+                Category("?��?", "0", "10"),
+                Category("?�活", "0", "11"),
+                Category("?��?", "0", "12"),
+                Category("?��?", "0", "17"),
+                Category("?��?", "0", "33"),
+                Category("?��?", "0", "37"),
                 Category("奇幻", "0", "14"),
-                Category("魔法", "0", "15"),
-                Category("恐怖", "0", "29"),
+                Category("魔�?", "0", "15"),
+                Category("?��?, "0", "29"),
                 Category("神鬼", "0", "20"),
-                Category("萌系", "0", "21"),
-                Category("历史", "0", "4"),
-                Category("美食", "0", "7"),
-                Category("同人", "0", "30"),
+                Category("?�系", "0", "21"),
+                Category("?�史", "0", "4"),
+                Category("美�?", "0", "7"),
+                Category("?�人", "0", "30"),
                 Category("运动", "0", "34"),
                 Category("绅士", "0", "36"),
-                Category("机甲", "0", "40"),
-                Category("限制级", "0", "61"),
-                Category("少年向", "1", "1"),
-                Category("少女向", "1", "2"),
-                Category("青年向", "1", "3"),
+                Category("?�甲", "0", "40"),
+                Category("?�制�?, "0", "61"),
+                Category("少年??, "1", "1"),
+                Category("少女??, "1", "2"),
+                Category("?�年??, "1", "3"),
                 Category("港台", "2", "35"),
-                Category("日韩", "2", "36"),
-                Category("大陆", "2", "37"),
-                Category("欧美", "2", "52"),
+                Category("?�韩", "2", "36"),
+                Category("大�?", "2", "37"),
+                Category("欧�?", "2", "52"),
             ),
         ),
     )
@@ -656,22 +656,22 @@ class Manhuaren : HttpSource(), ConfigurableSource {
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
         EditTextPreference(screen.context).apply {
             key = USER_ID_PREF
-            title = "用户ID"
+            title = "?�户ID"
             val userId = preferences.getString(USER_ID_PREF, "")!!
-            summary = userId.ifEmpty { "无用户ID，点击设置" }
+            summary = userId.ifEmpty { "?�用?�ID，点?�设�? }
             setOnPreferenceChangeListener { _, newValue ->
-                summary = (newValue as String).ifEmpty { "无用户ID，点击设置" }
+                summary = (newValue as String).ifEmpty { "?�用?�ID，点?�设�? }
                 true
             }
         }.let(screen::addPreference)
 
         EditTextPreference(screen.context).apply {
             key = TOKEN_PREF
-            title = "令牌(Token)"
+            title = "令�?(Token)"
             val token = preferences.getString(TOKEN_PREF, "")!!
-            summary = if (token.isEmpty()) "无令牌，点击设置" else "点击查看"
+            summary = if (token.isEmpty()) "?�令?��??�击设置" else "?�击?��?"
             setOnPreferenceChangeListener { _, newValue ->
-                summary = if ((newValue as String).isEmpty()) "无令牌，点击设置" else "点击查看"
+                summary = if ((newValue as String).isEmpty()) "?�令?��??�击设置" else "?�击?��?"
                 true
             }
         }.let(screen::addPreference)

@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.extension.zh.dm5
+package eu.kanade.tachiyomi.extension.zh.dm5suwa
 
 import android.content.SharedPreferences
 import androidx.preference.ListPreference
@@ -26,7 +26,7 @@ import java.util.Locale
 class Dm5 : ParsedHttpSource(), ConfigurableSource {
     override val lang = "zh"
     override val supportsLatest = true
-    override val name = "动漫屋"
+    override val name = "?�漫�?
     override val client: OkHttpClient = network.cloudflareClient.newBuilder()
         .addInterceptor(CommentsInterceptor)
         .build()
@@ -76,8 +76,8 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
         val el = document.selectFirst("div.banner_detail_form p.content")!!
         description = el.ownText() + el.selectFirst("span")?.ownText().orEmpty()
         status = when (document.selectFirst("div.banner_detail_form p.tip > span > span")!!.text()) {
-            "连载中" -> SManga.ONGOING
-            "已完结" -> SManga.COMPLETED
+            "连载�? -> SManga.ONGOING
+            "已�?�? -> SManga.COMPLETED
             else -> SManga.UNKNOWN
         }
     }
@@ -85,7 +85,7 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
     override fun chapterListParse(response: Response): List<SChapter> {
         val document = response.asJsoup()
         val container = document.selectFirst("div#chapterlistload")
-            ?: throw Exception("请到 WebView 确认；切换网络环境后可尝试扩展设置里面的“（动漫屋专用）清除 Cookie”")
+            ?: throw Exception("请到 WebView 确认；�??��?络环境�??��?试扩展设置�??��??��??�漫屋�??��?清除 Cookie??)
         val li = container.select("li > a").map {
             SChapter.create().apply {
                 url = it.attr("href")
@@ -106,7 +106,7 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
             return li.sortedByDescending { it.url.drop(2).dropLast(1).toInt() }
         }
 
-        return if (document.selectFirst("div.detail-list-title a.order")!!.text() == "正序") {
+        return if (document.selectFirst("div.detail-list-title a.order")!!.text() == "�??") {
             li.reversed()
         } else {
             li
@@ -191,20 +191,20 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
         val mirrorPreference = ListPreference(screen.context).apply {
             key = MIRROR_PREF
-            title = "使用镜像网址"
+            title = "使用?��?网�?"
             entries = MIRROR_ENTRIES
             entryValues = MIRROR_ENTRIES
             setDefaultValue(MIRROR_ENTRIES[0])
         }
         val chapterCommentsPreference = SwitchPreferenceCompat(screen.context).apply {
             key = CHAPTER_COMMENTS_PREF
-            title = "章末吐槽页"
-            summary = "修改后，已加载的章节需要清除章节缓存才能生效。"
+            title = "章末?�槽�?
+            summary = "修改?��?已�?载�?章�??�要�??��??��?存�??��??��?
             setDefaultValue(false)
         }
         val sortChapterPreference = SwitchPreferenceCompat(screen.context).apply {
             key = SORT_CHAPTER_PREF
-            title = "依照上傳時間排序章節"
+            title = "依照上傳?��??��?章�?"
             setDefaultValue(false)
         }
         screen.addPreference(mirrorPreference)
