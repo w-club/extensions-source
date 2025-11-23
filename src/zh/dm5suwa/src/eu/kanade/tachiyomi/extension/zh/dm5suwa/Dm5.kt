@@ -34,13 +34,13 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
     private val preferences: SharedPreferences = getPreferences()
     override val baseUrl = preferences.getString(MIRROR_PREF, MIRROR_ENTRIES[0])!!
 
-    // ✅ 終極修正：
-    // 1. 使用電腦版 User-Agent (Windows Chrome)
-    // 2. 注入完整 Cookie (包含 isAdult 和 MachineKey)
+    // ✅ 修正策略：
+    // 1. 只保留最關鍵的 isAdult=1
+    // 2. 使用 Windows Chrome 的 User-Agent，讓 Cloudflare 放行
     override fun headersBuilder() = super.headersBuilder()
-        .set("Accept-Language", "zh-TW")
+        .set("Accept-Language", "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7")
         .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-        .add("Cookie", "isAdult=1; DM5_MACHINEKEY=8aac7680-db45-4201-b2ba-4784e36604b2; ILUSER_MACHINEKEY=430baddd-5757-4c44-825a-c2a8b2598fe9")
+        .add("Cookie", "isAdult=1") .add("Referer", baseUrl)
 
     override fun popularMangaRequest(page: Int) = GET("$baseUrl/manhua-list-p$page/", headers)
     override fun popularMangaNextPageSelector(): String = "div.page-pagination a:contains(>)"
@@ -87,9 +87,16 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val document = response.asJsoup()
-        // May need to click button on website to read
+        // 如果找不到章節列表，不要直接拋 Exception，試著找其他線索或回傳空列表
+        // 這樣至少不會顯示紅色的錯誤訊息，讓我們知道是哪一步被擋
         val container = document.selectFirst("div#chapterlistload")
-            ?: throw Exception("请到 WebView 确认；切换网络环境后可尝试扩展设置里面的“（动漫屋专用）清除 Cookie”")
+
+        if (container == null) {
+            // 可能是 Cloudflare 擋住了，或者真的沒章節
+            // 這裡我們可以拋出一個更明確的錯誤
+            throw Exception("无法读取章节列表 (可能是 Cloudflare 阻挡或 IP 被封锁)")
+        }
+
         val li = container.select("li > a").map {
             SChapter.create().apply {
                 url = it.attr("href")
@@ -106,12 +113,10 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
             }
         }
 
-        // Sort chapter by url (related to upload time)
         if (preferences.getBoolean(SORT_CHAPTER_PREF, false)) {
             return li.sortedByDescending { it.url.drop(2).dropLast(1).toInt() }
         }
 
-        // Sometimes list is in ascending order, probably unread paid manga
         return if (document.selectFirst("div.detail-list-title a.order")!!.text() == "正序") {
             li.reversed()
         } else {
@@ -124,9 +129,16 @@ class Dm5 : ParsedHttpSource(), ConfigurableSource {
     override fun pageListParse(document: Document): List<Page> {
         val images = document.select("div#barChapter > img.load-src")
         val result: ArrayList<Page>
-        val script = document.selectFirst("script:containsData(DM5_MID)")!!.data()
+
+        // 檢查是否有 DM5_MID 變數，這是判斷是否成功載入的關鍵
+        val scriptElement = document.selectFirst("script:containsData(DM5_MID)")
+        if (scriptElement == null) {
+            throw Exception("无法解析图片页面 (脚本缺失)")
+        }
+
+        val script = scriptElement.data()
         if (!script.contains("DM5_VIEWSIGN_DT")) {
-            throw Exception(document.selectFirst("div.view-pay-form p.subtitle")!!.text())
+            throw Exception(document.selectFirst("div.view-pay-form p.subtitle")?.text() ?: "需要付费或验证")
         }
         val cid = script.substringAfter("var DM5_CID=").substringBefore(";")
         if (!images.isEmpty()) {
