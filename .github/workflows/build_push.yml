@@ -6,7 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-# ✅ 確保 Actions 有權限寫入 repo 分支
 permissions:
   contents: write
 
@@ -81,21 +80,38 @@ jobs:
         run: |
           cd repo
           
-          # ✅ 重點修正：把深層的 APK 全部移動到最外層 (Flatten)
-          # 如果不加這行，Inspector 會因為找不到檔案而產出空白 json
+          # 1. 把 APK 搬到最外層
           echo "Flattening APK directory..."
           find apk -type f -name "*.apk" -exec mv {} apk/ \;
           
-          # Download the official inspector tool dynamically
+          # 2. 下載 Inspector
           INSPECTOR_URL=$(curl -s "https://api.github.com/repos/keiyoushi/extensions-inspector/releases/latest" | jq -r '.assets[] | select(.name | endswith(".jar")) | .browser_download_url')
-          
-          echo "Downloading Inspector from: $INSPECTOR_URL"
           curl -L "$INSPECTOR_URL" -o Inspector.jar
           
-          # Generate the index.json
+          # 3. 產生原始 index.json (這是 Map 格式)
           java -jar Inspector.jar "apk" "index.json" "tmp"
           
-          # Clean up
+          # 4. ✅ 關鍵修正：用 Python 把 Map 轉成 List (App 才能讀)
+          python3 -c '
+          import json
+          
+          with open("index.json", "r", encoding="utf-8") as f:
+              data = json.load(f)
+          
+          output_list = []
+          # data 是一個 Object，Key 是 package name
+          for pkg_name, entries in data.items():
+              for entry in entries:
+                  # 把 package name 塞進去 (有些版本 Inspector 沒放)
+                  entry["pkg"] = pkg_name
+                  output_list.append(entry)
+          
+          # 寫回 index.json
+          with open("index.json", "w", encoding="utf-8") as f:
+              json.dump(output_list, f, ensure_ascii=False, indent=2)
+          '
+          
+          # 清理
           rm Inspector.jar
           rm -rf tmp
 
